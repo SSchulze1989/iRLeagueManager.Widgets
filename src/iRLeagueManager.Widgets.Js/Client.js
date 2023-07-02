@@ -1,6 +1,6 @@
 var HttpClient = function() {
-    // this.baseUrl = "https://irleaguemanager.net/api/";
-    this.baseUrl = "http://localhost:5000/";
+    this.baseUrl = "https://irleaguemanager.net/api/";
+    // this.baseUrl = "http://localhost:5000/";
     this.get = function (aUrl, aCallback) {
         var anHttpRequest = new XMLHttpRequest();
         anHttpRequest.onreadystatechange = function () {
