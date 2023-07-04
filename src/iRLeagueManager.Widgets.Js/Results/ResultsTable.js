@@ -147,6 +147,7 @@ function drawResults(element, leagueName, eventId) {
         .then(data => {
             const tab = data[0];
             const sessionResults = tab.sessionResults.reverse();
+            drawResultsHeading(element, data);
             for (result of sessionResults)
             {
                 result.sof = tab.strengthOfField;
@@ -158,6 +159,23 @@ function drawResults(element, leagueName, eventId) {
 
 function isElement(element) {
     return element instanceof Element || element instanceof HTMLDocument;  
+}
+
+function drawResultsHeading(element, data)
+{
+    if (data.length === 0)
+    {
+        return;
+    }
+    let h3 = document.createElement("h3");
+    h3.className = "m-2"
+    let eventData = data[0];
+    let date = new Date(eventData.date);
+    let headingText = 
+        date.toLocaleDateString() + " - " + eventData.eventName + ": " 
+        + eventData.trackName + (eventData.configName != "-" ? " - " + eventData.configName : "");
+    h3.appendChild(document.createTextNode(headingText));
+    element.appendChild(h3);
 }
 
 function createHeaderCell(column) {

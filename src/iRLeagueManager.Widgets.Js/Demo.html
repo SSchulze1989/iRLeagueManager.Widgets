@@ -10,7 +10,14 @@
         </div>
     </body>
     <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let leagueName = urlParams.get('league') ?? 'dac-f4-cup';
+        let eventId = urlParams.get('eventId') ?? 'latest';
+        if (leagueName === null)
+        {
+            console.error("query parameter 'league' is required");
+        }
         element = document.getElementById("results");
-        drawResults(element, "dac-f4-cup", 'latest');
+        drawResults(element, leagueName, eventId);
     </script>
 </html>
