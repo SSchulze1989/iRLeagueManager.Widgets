@@ -7,19 +7,24 @@
         <script src="./public/irleaguemanager-widgets-min.js"></script>
     </head> 
     <body>
-        <div id="results">
+        <div class="d-grid gap-4">
+            <div class="row" id="results_0">
+            </div>
+            <div class="row" id="results_1">
+            </div>
         </div>
+        <script>
+            const urlParams = new URLSearchParams(window.location.search);
+            let leagueName = urlParams.get('league') ?? 'dac-f4-cup';
+            let eventId = urlParams.get('eventId') ?? 'latest';
+            if (leagueName === null)
+            {
+                console.error("query parameter 'league' is required");
+            }
+            element = document.getElementById("results_0");
+            drawResults(element, leagueName, eventId, { championshipIndex: 0 })
+            element = document.getElementById("results_1");
+            drawResults(element, leagueName, eventId, { championshipIndex: 1, displayEventName: false })
+        </script>
     </body>
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        let leagueName = urlParams.get('league') ?? 'dac-f4-cup';
-        let eventId = urlParams.get('eventId') ?? 'latest';
-        if (leagueName === null)
-        {
-            console.error("query parameter 'league' is required");
-        }
-        element = document.getElementById("results");
-        useTabs = false;
-        drawResults(element, leagueName, eventId)
-    </script>
 </html>

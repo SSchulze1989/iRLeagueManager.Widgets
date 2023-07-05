@@ -136,7 +136,13 @@ class ResultsTable {
     }
 }
 
-function drawResults(element, leagueName, eventId) {
+function drawResults(element, leagueName, eventId, options) {
+    var defaults = {
+        championshipIndex: -1,
+        displayEventName: true,
+        displaySessionNames: "auto",
+    };
+    options = { ...defaults, ...options };
     const client = new HttpClient();
     let endpoint = leagueName + "/Events/" + eventId + "/Results";
     if (typeof eventId === 'string' && eventId.toLowerCase() == "latest")
@@ -149,12 +155,20 @@ function drawResults(element, leagueName, eventId) {
             {
                 return;
             }
-            drawEventHeading(element, data[0]);
-            for (tab of data)
+            if (options.displayEventName)
+            {
+                drawEventHeading(element, data[0]);
+            }
+            let displayTabs = data;
+            if (options.championshipIndex != -1)
+            {
+                displayTabs = data.slice(options.championshipIndex, options.championshipIndex + 1);
+            }
+            for (tab of displayTabs)
             {
                 const sessionResults = tab.sessionResults.reverse();
                 drawResultsHeading(element, tab);
-                showSessionName = sessionResults.length > 1;
+                showSessionName = options.displaySessionNames == "auto" ? sessionResults.length > 1 : options.displaySessionNames;
                 for (result of sessionResults)
                 {
                     result.sof = tab.strengthOfField;
