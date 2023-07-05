@@ -1,0 +1,16 @@
+{
+  "name": "irleaguemanager.widgets.js",
+  "version": "1.0.0",
+  "description": "javascript and html for embedding Schedules, Results and Standings from  iRLeagueManager into your webpage",
+  "main": "Demo.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "gulp": "^4.0.2",
+    "gulp-concat": "^2.6.1",
+    "gulp-uglify": "^3.0.2"
+  }
+}

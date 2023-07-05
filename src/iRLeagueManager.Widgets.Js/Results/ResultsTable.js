@@ -145,14 +145,22 @@ function drawResults(element, leagueName, eventId) {
     }
     client.fetchData(endpoint)
         .then(data => {
-            const tab = data[0];
-            const sessionResults = tab.sessionResults.reverse();
-            drawResultsHeading(element, data);
-            for (result of sessionResults)
+            if (data.length == 0)
             {
-                result.sof = tab.strengthOfField;
-                parseTimes(result);
-                addSessionResult(element, result);
+                return;
+            }
+            drawEventHeading(element, data[0]);
+            for (tab of data)
+            {
+                const sessionResults = tab.sessionResults.reverse();
+                drawResultsHeading(element, tab);
+                showSessionName = sessionResults.length > 1;
+                for (result of sessionResults)
+                {
+                    result.sof = tab.strengthOfField;
+                    parseTimes(result);
+                    addSessionResult(element, result, showSessionName);
+                }
             }
         })
 }
@@ -161,21 +169,25 @@ function isElement(element) {
     return element instanceof Element || element instanceof HTMLDocument;  
 }
 
-function drawResultsHeading(element, data)
+function drawEventHeading(element, data)
 {
-    if (data.length === 0)
-    {
-        return;
-    }
     let h3 = document.createElement("h3");
     h3.className = "m-2"
-    let eventData = data[0];
-    let date = new Date(eventData.date);
+    let date = new Date(data.date);
     let headingText = 
-        date.toLocaleDateString() + " - " + eventData.eventName + ": " 
-        + eventData.trackName + (eventData.configName != "-" ? " - " + eventData.configName : "");
+        date.toLocaleDateString() + " - " + data.eventName + ": " 
+        + data.trackName + (data.configName != "-" ? " - " + data.configName : "");
     h3.appendChild(document.createTextNode(headingText));
     element.appendChild(h3);
+}
+
+function drawResultsHeading(element, data)
+{
+    let h5 = document.createElement("h5");
+    h5.className = "m-2 mb-0";
+    let displayName = data.displayName;
+    h5.appendChild(document.createTextNode(displayName));
+    element.appendChild(h5);
 }
 
 function createHeaderCell(column) {
@@ -275,17 +287,20 @@ function isFastestLap(rows, currentRow, timeSelector) {
     return minValue == rowValue;
 }
 
-function addSessionResult(element, result) {
+function addSessionResult(element, result, showSessionName) {
     const name = result.sessionName;
 
     console.log(result);
     let card = document.createElement("div");
     element.appendChild(card);
     card.className = "card m-2";
-    let cardHeader = document.createElement("div");
-    card.appendChild(cardHeader);
-    cardHeader.className = "card-header";
-    cardHeader.innerHTML = name;
+    if (showSessionName)
+    {
+        let cardHeader = document.createElement("div");
+        card.appendChild(cardHeader);
+        cardHeader.className = "card-header";
+        cardHeader.innerHTML = name;
+    }
     let cardBody = document.createElement("div");
     card.appendChild(cardBody);
     cardBody.className = "card-body overflow-auto p-1";
