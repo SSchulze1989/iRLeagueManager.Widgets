@@ -10,6 +10,7 @@
 .positive {
     color: green;
 }
+
 .positive:before {
     content: "+";
 }
@@ -19,21 +20,24 @@
 }
 
 .table-header {
-    cursor: pointer;
     position: relative;
     filter:opacity(75%);
     padding-right: 0.8em !important;
 }
 
+    .table-header.action {
+        cursor: pointer;
+    }
+
     .table-header.active {
         filter: opacity(90%);
     }
 
-    .table-header:hover {
+    .table-header.action:hover {
         filter: opacity(100%);
     }
 
-    .table-header.active.sort-ascending::after, .table-header.sort-ascending:hover::after {
+    .table-header.active.sort-ascending::after, .table-header.action.sort-ascending:hover::after {
         content: " ";
         width: 0;
         height: 0;
@@ -45,7 +49,7 @@
         margin-left: 0.15em;
     }
 
-    .table-header.active.sort-descending::after, .table-header.sort-descending:hover::after {
+    .table-header.active.sort-descending::after, .table-header.action.sort-descending:hover::after {
         content: " ";
         width: 0;
         height: 0;

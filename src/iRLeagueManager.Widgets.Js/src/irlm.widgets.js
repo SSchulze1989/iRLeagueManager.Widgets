@@ -17,6 +17,81 @@ class TableBase {
         this.data = []
         this.sortByIndex = 0;
     }
+
+    draw() {
+        const sortedRows = this.sortByColumn(this.data);
+
+        this.parent.innerHTML = '';
+        let table = document.createElement("table");
+        table.className = "table table-sm table-striped table-hover";
+        table.style = "font-size: 0.9rem; line-height: 1rem";
+        this.parent.appendChild(table);
+
+        let tHead = document.createElement("thead");
+        table.appendChild(tHead);
+        let tr = document.createElement("tr");
+        tHead.appendChild(tr);
+        for (const [index, column] of this.columns.entries()) {
+            let th = createHeaderCell(column);
+            tr.appendChild(th);
+            if (index == this.sortByIndex) {
+                th.className += " active";
+            }
+            if (column.getSortValue != undefined) {
+                th.className += " action";
+                th.onclick = () => this.setSortColumn(index);
+            }
+        }
+
+        let tBody = document.createElement("tbody");
+        table.appendChild(tBody);
+        for (const row of sortedRows) {
+            let tr = document.createElement("tr");
+            tBody.appendChild(tr);
+            for (const column of this.columns) {
+                tr.appendChild(createTextCell(column, row));
+            }
+        }
+    }
+
+    addColumn(heading, content, sortValue = undefined, sortDirection = SortDirection.Ascending, style = undefined) {
+        this.columns = this.columns.concat([new TableColumn(heading, content, style, sortValue, sortDirection)]);
+    }
+
+    sortByColumn(rows) {
+        let sortColumn = this.columns[this.sortByIndex];
+        if (sortColumn === undefined || sortColumn.getSortValue === undefined)
+        {
+            return rows;
+        }
+
+        if (sortColumn.SortDirection === SortDirection.Ascending) {
+            return rows.sort((a, b) => this.compareColumnValues(sortColumn, a, b));
+        }
+        else {
+            return rows.sort((a, b) => this.compareColumnValues(sortColumn, b, a));
+        }
+    }
+
+    compareColumnValues(column, row1, row2) {
+        const value1 = column.getSortValue(row1);
+        const value2 = column.getSortValue(row2);
+        if (value1 > value2) {
+            return 1;
+        }
+        if (value2 > value1) {
+            return -1;
+        }
+        return 0;
+    }
+
+    setSortColumn(index) {
+        if (this.sortByIndex == index) {
+            this.columns[index].SortDirection = this.columns[index].SortDirection === SortDirection.Ascending ? SortDirection.Descending : SortDirection.Ascending;
+        } 
+        this.sortByIndex = index;
+        this.draw();
+    }
 }
 
 const SortDirection = {
@@ -63,80 +138,27 @@ class ResultsTable extends TableBase {
         }
         this.addColumn("Incs", x => x.incidents, x => parseInt(x.incidents));
     }
+}
 
-    addColumn(heading, content, sortValue = undefined, sortDirection = SortDirection.Ascending, style = undefined) {
-        this.columns = this.columns.concat([new TableColumn(heading, content, style, sortValue, sortDirection)]);
-    }
+class StandingTable extends TableBase {
+    setStanding(standing)
+    {
+        this.data = standing.standingRows;
 
-    draw() {
-        const sortedRows = this.sortByColumn(this.data);
+        const isTeamStanding = standing.isTeamStanding;
 
-        this.parent.innerHTML = '';
-        let table = document.createElement("table");
-        table.className = "table table-sm table-striped table-hover";
-        table.style = "font-size: 0.9rem; line-height: 1rem";
-        this.parent.appendChild(table);
-
-        let tHead = document.createElement("thead");
-        table.appendChild(tHead);
-        let tr = document.createElement("tr");
-        tHead.appendChild(tr);
-        for (const [index, column] of this.columns.entries()) {
-            let th = createHeaderCell(column);
-            tr.appendChild(th);
-            if (index == this.sortByIndex) {
-                th.className += " active";
-            }
-            if (column.getSortValue != undefined) {
-                th.className += " action";
-                th.onclick = () => this.setSortColumn(index);
-            }
-        }
-
-        let tBody = document.createElement("tbody");
-        table.appendChild(tBody);
-        for (const row of sortedRows) {
-            let tr = document.createElement("tr");
-            tBody.appendChild(tr);
-            for (const column of this.columns) {
-                tr.appendChild(createTextCell(column, row));
-            }
-        }
-    }
-
-    sortByColumn(rows) {
-        let sortColumn = this.columns[this.sortByIndex];
-        if (sortColumn === undefined || sortColumn.getSortValue === undefined)
-        {
-            return rows;
-        }
-
-        if (sortColumn.SortDirection === SortDirection.Ascending) {
-            return rows.sort((a, b) => this.compareColumnValues(sortColumn, a, b));
-        }
-        else {
-            return rows.sort((a, b) => this.compareColumnValues(sortColumn, b, a));
-        }
-    }
-
-    compareColumnValues(column, row1, row2) {
-        const value1 = column.getSortValue(row1);
-        const value2 = column.getSortValue(row2);
-        if (value1 > value2) {
-            return 1;
-        }
-        if (value2 > value1) {
-            return -1;
-        }
-        return 0;
-    }
-
-    setSortColumn(index) {
-        if (this.sortByIndex == index) {
-            this.columns[index].SortDirection = this.columns[index].SortDirection === SortDirection.Ascending ? SortDirection.Descending : SortDirection.Ascending;
-        } 
-        this.sortByIndex = index;
-        this.draw();
+        this.columns = [];
+        this.addColumn("Pos", x => formatChange(x.position + ".", x.positionChange), x => parseInt(x.position));
+        this.addColumn("Driver", x => `${x.firstname} ${x.lastname}`, x => `${x.firstname} ${x.lastname}`);
+        this.addColumn("Team", x => formatTeam(x), x => x.teamName);
+        this.addColumn("Race Pts.", x => formatChange(x.racePoints, x.racePointsChange), x => parseInt(x.racePoints), SortDirection.Descending);
+        this.addColumn("Penalty", x => formatChange(formatPenalty(-x.penaltyPoints), -x.penaltyPointsChange), x => -parseInt(x.penaltyPoints), SortDirection.Descending);
+        this.addColumn("Total Pts.", x => formatChange(x.totalPoints, x.totalPointsChange), x => x.totalPoints, SortDirection.Descending);
+        this.addColumn("Races", x => x.racesCounted + (x.races > x.racesCounted ? ` (${x.races})` : ''), x => x.racesCounted, SortDirection.Descending);
+        this.addColumn("Poles", x => formatChange(x.polePositions, x.polePositionsChange), x => x.polePositions, SortDirection.Descending);
+        this.addColumn("Wins", x => formatChange(x.wins, x.winsChange), x => x.wins, SortDirection.Descending);
+        this.addColumn("Podiums", x => x.top3, x => x.top3, SortDirection.Descending);
+        this.addColumn("Incidents", x => x.incidents, x => x.incidents);
     }
 }
 
@@ -170,7 +192,7 @@ async function drawResults(element, leagueName, eventId, options) {
     for (tab of displayTabs)
     {
         const sessionResults = tab.sessionResults.reverse();
-        drawResultsHeading(element, tab);
+        drawHeading(element, tab.displayName);
         showSessionName = options.displaySessionNames == "auto" ? sessionResults.length > 1 : options.displaySessionNames;
         for (result of sessionResults)
         {
@@ -178,6 +200,42 @@ async function drawResults(element, leagueName, eventId, options) {
             parseTimes(result);
             addSessionResult(element, result, showSessionName);
         }
+    }
+}
+
+async function drawStandings(element, leagueName, eventId, options) {
+    var defaults = {
+        championshipIndex: -1
+    };
+    options = { ...defaults, ...options };
+    let endpoint = `${leagueName}/Events/${eventId}/Standings`;
+    if (typeof eventId === 'string' && eventId.toLowerCase() == 'latest')
+    {
+        // get latest result
+        let latestResult = await fetch(baseUrl + `${leagueName}/Results/latest`)
+            .then(response => response.json());
+        if (latestResult.length == 0)
+        {
+            return;
+        }
+        let latestEventId = latestResult[0].eventId;
+        endpoint = `${leagueName}/Events/${latestEventId}/Standings/`;
+    }
+    let data = await fetch(baseUrl + endpoint)
+        .then(response => response.json());
+    if (data.length == 0)
+    {
+        return;
+    }
+    let displayTabs = data;
+    if (options.championshipIndex != -1)
+    {
+        displayTabs = data.slice(options.championshipIndex, options.championshipIndex + 1);
+    }
+    for (tab of displayTabs)
+    {
+        drawHeading(element, tab.name);
+        addStanding(element, tab);
     }
 }
 
@@ -197,12 +255,11 @@ function drawEventHeading(element, data)
     element.appendChild(h3);
 }
 
-function drawResultsHeading(element, data)
+function drawHeading(element, text)
 {
     let h5 = document.createElement("h5");
     h5.className = "m-2 mb-0";
-    let displayName = data.displayName;
-    h5.appendChild(document.createTextNode(displayName));
+    h5.appendChild(document.createTextNode(text));
     element.appendChild(h5);
 }
 
@@ -276,14 +333,26 @@ function formatTeam(row) {
     return label;
 }
 
+function formatPenalty(value) {
+    let node = document.createElement('label');
+    const valueClass = value < 0 ? "negative" : "";
+    node.className = valueClass;
+    node.appendChild(document.createTextNode(value));
+    return node;
+}
+
 function formatChange(value, change) {
     let node = document.createElement("div");
     
+    if (isElement(value) == false)
+    {
+        value = document.createTextNode(value);
+    }
     let valueNode = document.createElement("span");
-    node.appendChild(valueNode);
-    valueNode.appendChild(document.createTextNode(value));
+    valueNode.appendChild(value);
     valueNode.className = "d-inline-block pe-1";
     valueNode.style = "min-width: 1em;";
+    node.appendChild(valueNode);
     
     const changeClass = change > 0 ? "positive" : change < 0 ? "negative" : "equal";
     let changeNode = document.createElement("span");
@@ -323,5 +392,18 @@ function addSessionResult(element, result, showSessionName) {
 
     var table = new ResultsTable(cardBody);
     table.setResult(result);
+    table.draw();
+}
+
+function addStanding(element, standing) {
+    let card = document.createElement("div");
+    element.appendChild(card);
+    card.className = "card m-2";
+    let cardBody = document.createElement("div");
+    card.appendChild(cardBody);
+    cardBody.className = "card-body overflow-auto p-1";
+
+    var table = new StandingTable(cardBody);
+    table.setStanding(standing);
     table.draw();
 }
