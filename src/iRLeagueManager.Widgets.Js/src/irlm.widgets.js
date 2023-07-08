@@ -16,6 +16,10 @@ class TableBase {
         this.columns = [];
         this.data = []
         this.sortByIndex = 0;
+        this.tableAttributes = {
+            className: "table table-sm table-striped table-hover",
+            style: "font-size: 0.9rem; line-height: 1rem"
+        }
     }
 
     draw() {
@@ -23,8 +27,8 @@ class TableBase {
 
         this.parent.innerHTML = '';
         let table = document.createElement("table");
-        table.className = "table table-sm table-striped table-hover";
-        table.style = "font-size: 0.9rem; line-height: 1rem";
+        table.className = this.tableAttributes.className;
+        table.style = this.tableAttributes.style;
         this.parent.appendChild(table);
 
         let tHead = document.createElement("thead");
@@ -45,11 +49,11 @@ class TableBase {
 
         let tBody = document.createElement("tbody");
         table.appendChild(tBody);
-        for (const row of sortedRows) {
+        for (const [rowIndex, row] of sortedRows.entries()) {
             let tr = document.createElement("tr");
             tBody.appendChild(tr);
             for (const column of this.columns) {
-                tr.appendChild(createTextCell(column, row));
+                tr.appendChild(createTextCell(column, row, rowIndex));
             }
         }
     }
@@ -162,7 +166,56 @@ class StandingTable extends TableBase {
     }
 }
 
-async function drawResults(element, leagueName, eventId, options) {
+class ScheduleTable extends TableBase {
+    constructor(parentElement) {
+        super(parentElement);
+        let overrideAttributes = {
+            style: ""
+        }
+        this.tableAttributes = { ...this.tableAttributes, ...overrideAttributes };
+    }
+
+    setSchedule(events) {
+        this.data = events;
+
+        const displayLaps = this.data
+            .map(getEventLaps)
+            .some(laps => laps > 0);
+        const displayPractice = this.data
+            .map(x => getPracticeSession(x.sessions))
+            .some(practice => practice != null);
+        const displayQualy = this.data
+            .map(x => getQualySession(x.sessions))
+            .some(qualy => qualy != null);
+        const racesCount = Math.max(...this.data
+            .map(x => getRaceSessions(x.sessions).length));
+
+        this.addColumn("Nr.", (x, i) => `${i + 1}.`);
+        this.addColumn("Date", x => formatDate(x.date));
+        this.addColumn("Name", x => x.name);
+        this.addColumn("Track", x => x.trackName + (x.configName != '-' ? ` - ${x.configName}` : ''));
+        if (displayLaps)
+        {
+            this.addColumn("Laps", x => getEventLaps(x));
+        }
+        this.addColumn("Start", x => formatTimeOfDay(x.date));
+        if (displayPractice)
+        {
+            this.addColumn("Practice", x => formatSessionLength(getPracticeSession(x.sessions)));
+        }
+        if (displayQualy)
+        {
+            this.addColumn("Qualy", x => formatSessionLength(getQualySession(x.sessions)));
+        }
+        for (let i = 0; i < racesCount; i++)
+        {
+            let columName = racesCount > 1 ? `Race ${i+1}` : 'Race';
+            this.addColumn(columName, x => formatSessionLength(getRaceSessions(x.sessions)[i]))
+        }
+    }
+}
+
+async function drawResults(element, leagueName, eventId, options = null) {
     var defaults = {
         championshipIndex: -1,
         displayEventName: true,
@@ -203,7 +256,7 @@ async function drawResults(element, leagueName, eventId, options) {
     }
 }
 
-async function drawStandings(element, leagueName, eventId, options) {
+async function drawStandings(element, leagueName, eventId, options = null) {
     var defaults = {
         championshipIndex: -1
     };
@@ -239,6 +292,18 @@ async function drawStandings(element, leagueName, eventId, options) {
     }
 }
 
+async function drawSchedule(element, leagueName, seasonId, options = null) {
+    let defaults = { };
+    options = { ...defaults, ...options };
+    let endpoint = `${leagueName}/Seasons/${seasonId}`;
+    let season = await fetch(baseUrl + endpoint)
+        .then(response => response.json());
+    endpoint = `${leagueName}/Seasons/${season.seasonId}/Events`;
+    let data = await fetch(baseUrl + endpoint)
+        .then(response => response.json());
+    addSchedule(element, data);
+}
+
 function isElement(element) {
     return element instanceof Element || element instanceof HTMLDocument;  
 }
@@ -247,9 +312,9 @@ function drawEventHeading(element, data)
 {
     let h3 = document.createElement("h3");
     h3.className = "m-2"
-    let date = new Date(data.date);
+    let date = formatDate(data.date);
     let headingText = 
-        date.toLocaleDateString() + " - " + data.eventName + ": " 
+        date + " - " + data.eventName + ": " 
         + data.trackName + (data.configName != "-" ? " - " + data.configName : "");
     h3.appendChild(document.createTextNode(headingText));
     element.appendChild(h3);
@@ -270,9 +335,9 @@ function createHeaderCell(column) {
     return th;
 }
 
-function createTextCell(column, row) {
+function createTextCell(column, row, rowIndex) {
     let td = document.createElement("td");
-    value = column.getValue(row);
+    value = column.getValue(row, rowIndex);
     if (isElement(value)) {
         td.appendChild(value);
     } else {
@@ -309,6 +374,16 @@ function parseTimes(result) {
         row.interval.time = parseTimeString(row.interval.time);
     }
     return result;
+}
+
+function formatDate(dateString) {
+    let date = new Date(dateString);
+    return date.toLocaleDateString();
+}
+
+function formatTimeOfDay(dateTimeString) {
+    let date = new Date(dateTimeString);
+    return date.toLocaleTimeString();
 }
 
 function formatTime(time) {
@@ -363,6 +438,25 @@ function formatChange(value, change) {
     return node;
 }
 
+function formatSessionLength(session)
+{
+    if (session === undefined)
+    {
+        return '';
+    }
+    length = []
+    var duration = parseTimeString(session.duration);
+    if (duration.totalSeconds > 0)
+    {
+        length.push(`${duration.hours.toString().padStart(2, '0')}:${duration.minutes.toString().padStart(2, '0')}`);
+    }
+    if (session.laps > 0)
+    {
+        length.push(`${session.laps} laps`);
+    }
+    return length.join(' / ');
+}
+
 function isFastestLap(rows, currentRow, timeSelector) {
     const rowValue = timeSelector(currentRow).totalSeconds;
     const values = rows
@@ -370,6 +464,51 @@ function isFastestLap(rows, currentRow, timeSelector) {
         .filter(x => x > 0);
     const minValue = Math.min(...values);
     return minValue == rowValue;
+}
+
+function getQualySession(sessions)
+{
+    let qualySessions = sessions.filter(x => x.sessionType == "Qualifying");
+    if (qualySessions.length == 0)
+    {
+        return null;
+    }
+    return qualySessions[qualySessions.length-1];
+}
+
+function getPracticeSession(sessions)
+{
+    let qualySessions = sessions.filter(x => x.sessionType == "Practice");
+    if (qualySessions.length == 0)
+    {
+        return null;
+    }
+    return qualySessions[qualySessions.length-1];
+}
+
+function getRaceSessions(sessions)
+{
+    return sessions.filter(x => x.sessionType == "Race");
+}
+
+function getEventLaps(event)
+{
+    let sessions = event.sessions;
+    if (sessions.length == 0)
+    {
+        return 0;
+    }
+    let raceSessions = getRaceSessions(sessions);
+    if (raceSessions.length > 0)
+    {
+        return raceSessions[raceSessions.length-1].laps;
+    }
+    let qualySession = getQualySession(sessions);
+    if (qualySession != null)
+    {
+        return qualySession.laps;
+    }
+    return sessions[sessions.length-1].laps;
 }
 
 function addSessionResult(element, result, showSessionName) {
@@ -405,5 +544,18 @@ function addStanding(element, standing) {
 
     var table = new StandingTable(cardBody);
     table.setStanding(standing);
+    table.draw();
+}
+
+function addSchedule(element, events) {
+    let card = document.createElement("div");
+    element.appendChild(card);
+    card.className = "card m-2";
+    let cardBody = document.createElement("div");
+    card.appendChild(cardBody);
+    cardBody.className = "card-body overflow-auto p-1";
+
+    var table = new ScheduleTable(cardBody);
+    table.setSchedule(events);
     table.draw();
 }
