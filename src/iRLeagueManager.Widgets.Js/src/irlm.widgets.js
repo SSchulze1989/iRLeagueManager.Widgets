@@ -1,9 +1,6 @@
-const SortDirection = {
-    Ascending: "sort-ascending",
-    Descending: "sort-descending"
-}
+const baseUrl = "https://irleaguemanager.net/api/";
 
-class ResultsTableColumn {
+class TableColumn {
     constructor(heading, getValue, getStyle, getSortValue, sortDirection = SortDirection.Ascending) {
         this.heading = heading;
         this.getValue = getValue;
@@ -13,14 +10,21 @@ class ResultsTableColumn {
     }
 }
 
-class ResultsTable {
-    constructor(parent) {
-        this.parent = parent;
+class TableBase {
+    constructor(parentElement) {
+        this.parent = parentElement;
         this.columns = [];
         this.data = []
         this.sortByIndex = 0;
     }
+}
 
+const SortDirection = {
+    Ascending: "sort-ascending",
+    Descending: "sort-descending"
+}
+
+class ResultsTable extends TableBase {
     setResult(result) {
         this.data = result.resultRows;
         const isTeamResult = this.data.some(x => x.memberId == null) ?? false;
@@ -61,7 +65,7 @@ class ResultsTable {
     }
 
     addColumn(heading, content, sortValue = undefined, sortDirection = SortDirection.Ascending, style = undefined) {
-        this.columns = this.columns.concat([new ResultsTableColumn(heading, content, style, sortValue, sortDirection)]);
+        this.columns = this.columns.concat([new TableColumn(heading, content, style, sortValue, sortDirection)]);
     }
 
     draw() {
@@ -136,47 +140,45 @@ class ResultsTable {
     }
 }
 
-function drawResults(element, leagueName, eventId, options) {
+async function drawResults(element, leagueName, eventId, options) {
     var defaults = {
         championshipIndex: -1,
         displayEventName: true,
         displaySessionNames: "auto",
     };
     options = { ...defaults, ...options };
-    const client = new HttpClient();
     let endpoint = leagueName + "/Events/" + eventId + "/Results";
     if (typeof eventId === 'string' && eventId.toLowerCase() == "latest")
     {
         endpoint = leagueName + "/Results/Latest";
     }
-    client.fetchData(endpoint)
-        .then(data => {
-            if (data.length == 0)
-            {
-                return;
-            }
-            if (options.displayEventName)
-            {
-                drawEventHeading(element, data[0]);
-            }
-            let displayTabs = data;
-            if (options.championshipIndex != -1)
-            {
-                displayTabs = data.slice(options.championshipIndex, options.championshipIndex + 1);
-            }
-            for (tab of displayTabs)
-            {
-                const sessionResults = tab.sessionResults.reverse();
-                drawResultsHeading(element, tab);
-                showSessionName = options.displaySessionNames == "auto" ? sessionResults.length > 1 : options.displaySessionNames;
-                for (result of sessionResults)
-                {
-                    result.sof = tab.strengthOfField;
-                    parseTimes(result);
-                    addSessionResult(element, result, showSessionName);
-                }
-            }
-        })
+    let data = await fetch(baseUrl + endpoint)
+        .then(response => response.json());
+    if (data.length == 0)
+    {
+        return;
+    }
+    if (options.displayEventName)
+    {
+        drawEventHeading(element, data[0]);
+    }
+    let displayTabs = data;
+    if (options.championshipIndex != -1)
+    {
+        displayTabs = data.slice(options.championshipIndex, options.championshipIndex + 1);
+    }
+    for (tab of displayTabs)
+    {
+        const sessionResults = tab.sessionResults.reverse();
+        drawResultsHeading(element, tab);
+        showSessionName = options.displaySessionNames == "auto" ? sessionResults.length > 1 : options.displaySessionNames;
+        for (result of sessionResults)
+        {
+            result.sof = tab.strengthOfField;
+            parseTimes(result);
+            addSessionResult(element, result, showSessionName);
+        }
+    }
 }
 
 function isElement(element) {
