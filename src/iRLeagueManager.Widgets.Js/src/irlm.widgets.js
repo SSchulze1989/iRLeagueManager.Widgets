@@ -440,7 +440,7 @@ function formatChange(value, change) {
 
 function formatSessionLength(session)
 {
-    if (session === undefined)
+    if (!session)
     {
         return '';
     }
